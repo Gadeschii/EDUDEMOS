@@ -7,18 +7,20 @@ This project uses an ESP32 board, a servo motor, and two LDR sensors to create a
 ```
 ESP32-Light-Follower
 ├── src
-│   ├── main.ino
-│   └── LDRServoControl
-│       └── LDRServoControl.ino
+│   └── main
+│       └── main.ino
+│   └── ESP32
+│       └── accion.ino
+│   
 ├── lib
 │   └── README.md
 ├── .gitignore
 └── README.md
 ```
 
-- `src/main.ino`: This file is the main Arduino sketch file. It contains the setup and loop functions for the ESP32 board. It includes the `LDRServoControl` library and initializes the servo and LDR sensors. It also implements the logic to control the servo based on the light levels from the LDR sensors.
+- `src/main.ino`: This file is the main Arduino sketch file. It contains the setup and loop functions for the ESP32 board. It includes the `accion` library and initializes the servo and LDR sensors. It also implements the logic to control the servo based on the light levels from the LDR sensors.
 
-- `src/LDRServoControl/LDRServoControl.ino`: This file is a library that provides functions to control the servo based on the light levels from the LDR sensors. It includes the `Servo` library and defines a class `LDRServoControl` with methods to read the light levels from the LDR sensors and move the servo accordingly.
+- `src/ESP32/accion.ino`: This file is a library that provides functions to control the servo based on the light levels from the LDR sensors. It includes the `Servo` library and defines a class `accion` with methods to read the light levels from the LDR sensors and move the servo accordingly.
 
 - `lib/README.md`: This file contains information about the libraries used in the project.
 
