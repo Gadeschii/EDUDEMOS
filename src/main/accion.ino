@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <ESP32Servo.h>
 
+
 const int ldrPin1 = 34; // Assuming this is the pin for the first LDR
 const int ldrPin2 = 35; // Assuming this is the pin for the second LDR
 const int servoPin = 33; // Defines the pin to which the servo is connected
@@ -13,6 +14,8 @@ void setupAccion() {
   pinMode(ldrPin1, INPUT); // Sets the first LDR pin as input
   pinMode(ldrPin2, INPUT); // Sets the second LDR pin as input
   myServo.attach(servoPin); // Associates the Servo object with the servo pin
+  dht.begin(); // Starts the DHT sensor
+  
 }
 
 void loopAccion() {

@@ -10,11 +10,14 @@ void setup() {
   Serial.begin(115200); // Start serial communication at 115200 baud rate
   setupMain(); // Setup main functionalities including WiFi connection
   setupAccion(); // Call to the new initialization function from accion.ino
+  setupDHT(); // Setup for DHT sensor
+
 }
 
 void loop() {
   loopMain(); // Main loop function
   loopAccion(); // Call to the new loop function from accion.ino
+  loopDHT(); // Read and print DHT sensor values
 }
 
 void setupMain() {

@@ -7,9 +7,10 @@ This project enhances the ESP32 light follower system by adding WiFi connectivit
 ```
 ESP32-WiFi-OTA-Light-Follower
 ├── src
-│     ├── accion.ino
-│     └── wifi_ota.ino
-
+│   ├── main
+│   │   ├── accion.ino
+│   │   ├── DHT11.ino
+│   │   └── main.ino
 ├── lib
 │   └── README.md
 ├── .gitignore
@@ -35,6 +36,14 @@ ESP32-WiFi-OTA-Light-Follower
 - **Light Following**: The servo motor adjusts its position to follow the brightest light source detected by the LDR sensors.
 - **WiFi Connectivity**: Enables remote control and data transmission over the internet.
 - **OTA Updates**: Allows for wireless firmware updates, making it easier to deploy new features or fixes.
+## DHT11 Integration
+
+The ESP32 WiFi and OTA Light Follower project includes integration with the DHT11 sensor, which is used to measure the ambient temperature and humidity. These environmental readings can be useful for adjusting the behavior of the device based on the current conditions.
+
+### How It Works
+
+- **Temperature and Humidity Measurement**: The DHT11 sensor periodically measures the ambient temperature and humidity. These measurements can be used to make decisions within the system or be sent over WiFi for remote monitoring.
+
 
 ## Setup and Usage
 
@@ -42,5 +51,11 @@ ESP32-WiFi-OTA-Light-Follower
 2. **OTA Configuration**: Optionally, set a password for OTA updates in `wifi_ota.ino`.
 3. **Compile and Upload**: Use the Arduino IDE to compile and upload the sketch to your ESP32 device.
 4. **Control and Update**: Once connected to WiFi, the device can be controlled remotely, and OTA updates can be initiated from the Arduino IDE.
+
+5. **Sensor Connection**: Connect the DHT11 sensor to your ESP32 board. The data pin of the DHT11 should be connected to pin 32, as defined in `src/main/DHT11.ino`.
+
+6. **Reading Data**: The `loopDHT()` function in `src/main/DHT11.ino` is responsible for reading the humidity and temperature from the DHT11 sensor. It prints these values to the serial monitor.
+
+7. **Integration with Main Loop**: Ensure that the `setupDHT()` function is called in your main setup routine, and `loopDHT()` is called within your main loop to continuously read and update the temperature and humidity readings.
 
 This project is a starting point for developing IoT applications with the ESP32 that require remote control and maintenance.
