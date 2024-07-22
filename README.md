@@ -1,52 +1,46 @@
-# ESP32 Light Follower
+# ESP32 WiFi and OTA Light Follower
 
-This project uses an ESP32 board, a servo motor, and two LDR sensors to create a light-following system. The servo motor moves in the direction of the sensor with the highest light level.
+This project enhances the ESP32 light follower system by adding WiFi connectivity and Over-The-Air (OTA) update capabilities. The system uses a servo motor and two LDR sensors to track the light source. With the integration of WiFi, the device can be controlled remotely, and firmware updates can be applied without physical access.
 
 ## Project Structure
 
 ```
-ESP32-Light-Follower
+ESP32-WiFi-OTA-Light-Follower
 ├── src
-│   └── main
-│       └── main.ino
-│   └── ESP32
-│       └── accion.ino
-│   
+│     ├── accion.ino
+│     └── wifi_ota.ino
+
 ├── lib
 │   └── README.md
 ├── .gitignore
 └── README.md
 ```
 
-- `src/main.ino`: This file is the main Arduino sketch file. It contains the setup and loop functions for the ESP32 board. It includes the `accion` library and initializes the servo and LDR sensors. It also implements the logic to control the servo based on the light levels from the LDR sensors.
+- [`src/main/main.ino`]
+ The main Arduino sketch file for the ESP32 board. It initializes WiFi connectivity, sets up OTA updates, and includes the logic for the light-following functionality using the servo and LDR sensors.
 
-- `src/ESP32/accion.ino`: This file is a library that provides functions to control the servo based on the light levels from the LDR sensors. It includes the `Servo` library and defines a class `accion` with methods to read the light levels from the LDR sensors and move the servo accordingly.
+- `src/ESP32/accion.ino`: Provides functions to control the servo based on the light levels detected by the LDR sensors. It utilizes the `Servo` library for servo control.
 
-- `lib/README.md`: This file contains information about the libraries used in the project.
+- `src/ESP32/wifi_ota.ino`: Contains the setup and loop functions necessary for establishing WiFi connectivity and handling OTA updates. This allows for remote management and firmware updates of the device.
 
-- `.gitignore`: This file specifies which files and directories should be ignored by Git version control.
+- [`lib/README.md`]
+ Describes the external libraries used in the project, including `WiFi.h` for WiFi functionality and `ArduinoOTA.h` for OTA updates.
 
-- `README.md`: This file contains the documentation for the project.
+- `.gitignore`: Lists the files and directories that are to be ignored by Git, such as build artifacts and sensitive configuration files.
 
-## Getting Started
+- [`README.md`] Provides documentation for the project, including an overview, project structure, and setup instructions.
 
-To get started with the ESP32 Light Follower project, follow these steps:
+## Features
 
-1. Connect the servo motor and LDR sensors to the ESP32 board according to the circuit diagram.
+- **Light Following**: The servo motor adjusts its position to follow the brightest light source detected by the LDR sensors.
+- **WiFi Connectivity**: Enables remote control and data transmission over the internet.
+- **OTA Updates**: Allows for wireless firmware updates, making it easier to deploy new features or fixes.
 
-2. Open the `src/main.ino` file in the Arduino IDE.
+## Setup and Usage
 
-3. Install any required libraries mentioned in the `lib/README.md` file.
+1. **WiFi Configuration**: Update `wifi_ota.ino` with your WiFi network credentials.
+2. **OTA Configuration**: Optionally, set a password for OTA updates in `wifi_ota.ino`.
+3. **Compile and Upload**: Use the Arduino IDE to compile and upload the sketch to your ESP32 device.
+4. **Control and Update**: Once connected to WiFi, the device can be controlled remotely, and OTA updates can be initiated from the Arduino IDE.
 
-4. Upload the sketch to the ESP32 board.
-
-5. Power on the system and observe how the servo motor moves in the direction of the sensor with the highest light level.
-
-For more detailed instructions and troubleshooting tips, refer to the documentation in the `README.md` file.
-
-## License
-
-This project is licensed under the [MIT License](LICENSE).
-```
-
-Please note that the content provided is a template and may need to be customized based on your specific project requirements.
+This project is a starting point for developing IoT applications with the ESP32 that require remote control and maintenance.
