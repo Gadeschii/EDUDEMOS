@@ -1,49 +1,50 @@
-// first we need to install the ArduinoOTA library and the WiFi library
-#include <WiFi.h>
+// First, we need to include the ArduinoOTA library for OTA updates and the WiFi library for wireless connectivity
 #include <ArduinoOTA.h>
+#include <WiFi.h>
 
-// Replace with your network credentials
-const char* ssid = "iPhone de javier";
-const char* password = "keyla111";
+// Replace these with your network credentials
+const char* ssid = "WorkinCholas";
+const char* password = "WiC!2023";
 
 void setup() {
-  Serial.begin(115200);
-
-  // Conectar a la red WiFi
-  WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
-  }
-
-  // Iniciar ArduinoOTA
-  ArduinoOTA.setHostname("ESP32-OTA"); // Nombre del dispositivo para OTA
-  // ArduinoOTA.setPassword("admin"); // Descomentar para establecer una contraseña
-
-  ArduinoOTA.onStart([]() {
-    Serial.println("Starting...");
-  });
-  ArduinoOTA.onEnd([]() {
-    Serial.println("\nEnd");
-  });
-  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
-    Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
-  });
-  ArduinoOTA.onError([](ota_error_t error) {
-    Serial.printf("Error[%u]: ", error);
-    if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
-    else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
-    else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
-    else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
-    else if (error == OTA_END_ERROR) Serial.println("End Failed");
-  });
-  ArduinoOTA.begin();
-
-  Serial.println("Ready");
-  Serial.print("IP address: ");
-  Serial.println(WiFi.localIP());
+  Serial.begin(115200); // Start serial communication at 115200 baud rate
+  setupMain(); // Setup main functionalities including WiFi connection
+  setupAccion(); // Call to the new initialization function from accion.ino
 }
 
 void loop() {
-  ArduinoOTA.handle();
+  loopMain(); // Main loop function
+  loopAccion(); // Call to the new loop function from accion.ino
+}
+
+void setupMain() {
+  // Connect to the WiFi network
+  WiFi.begin(ssid, password);
+  Serial.print("Connecting.");
+  while (WiFi.status() != WL_CONNECTED) { // Wait for the connection to establish
+    delay(500); // Delay to prevent spamming
+    Serial.print("."); // Print dots to indicate the connection process
+  }
+  Serial.println("Connected to WiFi"); // Print when connected
+
+  // Initialize ArduinoOTA with the hostname and optional password
+  ArduinoOTA.setHostname("ESP32-OTA"); // Set the device's name for OTA updates
+  // ArduinoOTA.setPassword("admin"); // Uncomment to set a password for OTA updates
+
+  // Define OTA event handlers
+  ArduinoOTA.onStart([]() {
+    Serial.println("Starting OTA update..."); // Called when the OTA update starts
+  });
+  ArduinoOTA.onEnd([]() {
+    Serial.println("\nOTA Update Finished"); // Called when the OTA update ends
+  });
+  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+    Serial.printf("Progress: %u%%\r", (progress / (total / 100))); // Called to show OTA update progress
+  });
+
+  ArduinoOTA.begin(); // Start the OTA service
+}
+
+void loopMain() {
+  ArduinoOTA.handle(); // Handle OTA updates
 }
