@@ -24,6 +24,7 @@ This Arduino project reads temperature and humidity values, controls LEDs based 
 
 ### Temperature and Humidity Reading
 
+
 The code reads temperature (`t`) and humidity (`h`) values from the sensor and prints them to the Serial Monitor.
 
 ```cpp
@@ -31,12 +32,13 @@ Serial.print(" °C, Humidity: ");
 Serial.print(h);
 Serial.println(" %");
 
-LED Control Based on Temperature
+##LED Control Based on Temperature
+
 The controlLEDsBasedOnTemperature function controls the LEDs based on the temperature value:
 
-If the temperature is below 20°C, the "Cold" LED is turned on.
-If the temperature is between 20°C and 25°C, the "Good" LED is turned on.
-If the temperature is above 25°C, the "Heat" LED is turned on.
+-   If the temperature is below 20°C, the "Cold" LED is turned on.
+-   If the temperature is between 20°C and 25°C, the "Good" LED is turned on.
+-   If the temperature is above 25°C, the "Heat" LED is turned on.
 
 void controlLEDsBasedOnTemperature(float t) {
   if (t < 20) {
@@ -57,7 +59,7 @@ void controlLEDsBasedOnTemperature(float t) {
   }
 }
 
-## LDR and Servo Control
+##LDR and Servo Control
 
 The updateLDRAndServo function reads values from two LDRs, calculates the difference, and maps this difference to an angle for the servo motor. It also calculates the average LDR value over multiple readings and sends this value to Adafruit IO.
 
@@ -95,7 +97,7 @@ void updateLDRAndServo() {
   Serial.println(angle);
 }
 
-## Usage
+##Usage
 1. Connect the components to the Arduino as per the pin configuration.
 2. Upload the code to the Arduino board.
 3. Open the Serial Monitor to view temperature, humidity, and LDR values.
@@ -103,12 +105,12 @@ void updateLDRAndServo() {
 5. The servo motor will adjust based on the light difference detected by the LDRs.
 6. Average LDR values will be sent to Adafruit IO for logging.
 
-## Dependencies
+##Dependencies
 - Adafruit IO Arduino Library
 - Servo Library
-## License
+##License
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-## Acknowledgments
+##Acknowledgments
 - Adafruit for their excellent libraries and tutorials.
 - Arduino community for their support and resources.
