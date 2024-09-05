@@ -32,6 +32,7 @@ Serial.print(" °C, Humidity: ");
 Serial.print(h);
 Serial.println(" %");
 
+##pragma region 
 ##LED Control Based on Temperature
 
 The controlLEDsBasedOnTemperature function controls the LEDs based on the temperature value:
@@ -59,6 +60,8 @@ void controlLEDsBasedOnTemperature(float t) {
   }
 }
 
+##pragma endregion
+##pragma region  
 ##LDR and Servo Control
 
 The updateLDRAndServo function reads values from two LDRs, calculates the difference, and maps this difference to an angle for the servo motor. It also calculates the average LDR value over multiple readings and sends this value to Adafruit IO.
@@ -96,7 +99,9 @@ void updateLDRAndServo() {
   Serial.print("Servo Angle: ");
   Serial.println(angle);
 }
+##pragma endregion
 
+##pragma region 
 ##Usage
 1. Connect the components to the Arduino as per the pin configuration.
 2. Upload the code to the Arduino board.
@@ -105,12 +110,20 @@ void updateLDRAndServo() {
 5. The servo motor will adjust based on the light difference detected by the LDRs.
 6. Average LDR values will be sent to Adafruit IO for logging.
 
+##pragma endregion
+
+##pragma region 
 ##Dependencies
 - Adafruit IO Arduino Library
 - Servo Library
+##pragma endregion
+##pragma region 
 ##License
 This project is licensed under the MIT License - see the LICENSE file for details.
 
+##pragma endregion
+##pragma region 
 ##Acknowledgments
 - Adafruit for their excellent libraries and tutorials.
 - Arduino community for their support and resources.
+##pragma endregion
