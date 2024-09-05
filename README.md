@@ -31,13 +31,12 @@ Serial.print(" °C, Humidity: ");
 Serial.print(h);
 Serial.println(" %");
 
-## LED Control Based on Temperature
-
+LED Control Based on Temperature
 The controlLEDsBasedOnTemperature function controls the LEDs based on the temperature value:
 
--   If the temperature is below 20°C, the "Cold" LED is turned on.
--   If the temperature is between 20°C and 25°C, the "Good" LED is turned on.
--   If the temperature is above 25°C, the "Heat" LED is turned on.
+If the temperature is below 20°C, the "Cold" LED is turned on.
+If the temperature is between 20°C and 25°C, the "Good" LED is turned on.
+If the temperature is above 25°C, the "Heat" LED is turned on.
 
 void controlLEDsBasedOnTemperature(float t) {
   if (t < 20) {
