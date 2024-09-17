@@ -155,8 +155,9 @@ void readVoltage() {
   Serial.print("Measured voltage (V): ");
   Serial.println(voltage);  // Display the measured voltage
 
+  
   // Adjust for voltage divider
-  float inputVoltage = voltage * 2;
+  float inputVoltage = voltage / (R2 / (R1 + R2));
 
   // Convert to microvolts
   float microvolts = inputVoltage * 1000000.0;
