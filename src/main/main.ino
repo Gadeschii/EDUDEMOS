@@ -225,6 +225,12 @@ void setupWiFi() {
   }
   Serial.println();
   Serial.println(io.statusText());
+
+  if(io.status() == AIO_CONNECTED) {
+    Serial.println("Connected to Adafruit IO");
+  } else {
+    Serial.println("Failed to connect to Adafruit IO");
+  }
 }
 
 void setupOTA() {
