@@ -5,14 +5,16 @@
 #include "DHT.h"
 #include <ESP32Servo.h>
 #include <ArduinoOTA.h>
+#include "config.h"
 
-// WiFi credentials
-#define WIFI_SSID "UPE"
-#define WIFI_PASS "redwifi.upe"
+// // WiFi credentials
+// #define WIFI_SSID "your_wifi_ssid"
+// #define WIFI_PASS "your_wifi_password"
 
-// Adafruit IO configuration
-#define AIO_USERNAME  "Edudemos"
-#define AIO_KEY       "aio_BYTA15enBYcJamhC4D8etZEv12h8"
+// Adafruit IO credentials
+// #define AIO_USERNAME "your_aio_username"
+// #define AIO_KEY "your_aio_key"
+
 AdafruitIO_WiFi io(AIO_USERNAME, AIO_KEY, WIFI_SSID, WIFI_PASS);
 AdafruitIO_Feed *temperature = io.feed("temperature");
 AdafruitIO_Feed *humidity = io.feed("humidity");
