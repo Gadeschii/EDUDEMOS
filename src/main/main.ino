@@ -53,6 +53,7 @@ unsigned long lastSensorReadTime5Min = 0;
 unsigned long lastSensorReadTime10Sec = 0;
 
 // Function declarations
+
 void setupWiFi();
 void setupOTA();
 void setupDHT();
@@ -64,6 +65,8 @@ void readVoltage();
 void readSensorTask1(void * parameter);
 void readSensorTask2(void * parameter);
 void readVoltageTask(void * parameter);
+
+
 
 void setup() {
   Serial.begin(115200); // Start serial communication at 115200 baud rate
@@ -106,6 +109,8 @@ void setup() {
     1                  // Core where the task should run
   );
 }
+
+//Handles OTA updates and maintains the connection to Adafruit IO.
 
 void loop() {
   handleOTA(); // Handle OTA updates
@@ -156,21 +161,36 @@ void readVoltage() {
   Serial.println(voltage);  // Display the measured voltage
 
   
-  // Adjust for voltage divider
+  /* 
+   Adjust for voltage divider
+   The input voltage is calculated using the voltage divider formula.
+   R1 and R2 are the resistors used in the voltage divider.
+   The formula used is: inputVoltage = voltage / (R2 / (R1 + R2))
+*/
   float inputVoltage = voltage / (R2 / (R1 + R2));
 
-  // Convert to microvolts
+  /* 
+   Convert to microvolts
+   The input voltage is converted to microvolts for higher precision.
+   1 volt = 1,000,000 microvolts
+*/
   float microvolts = inputVoltage * 1000000.0;
   Serial.print("Input voltage (µV): ");
   Serial.println(microvolts);
 
-  // Apply a minimum threshold to filter noise
+ /* 
+   Apply a minimum threshold to filter noise
+   Any microvolts value below the threshold is set to 0 to filter out noise.
+*/
   const float threshold = 10.0;  // Threshold in microvolts
   if (microvolts < threshold) {
     microvolts = 0;
   }
 
-  // Check if the microvolts value has changed
+  /* 
+   Check if the microvolts value has changed
+   If the new microvolts value is different from the last value, it is printed and sent to Adafruit IO.
+*/
   if (microvolts != lastMicrovolts) {
     Serial.print("Measured voltage: ");
     Serial.print(microvolts, 2);  // Display with 2 decimal places
@@ -184,9 +204,8 @@ void readVoltage() {
   }
 }
 
-
+//  Connects the ESP32 to a WiFi network and Adafruit IO.
 void setupWiFi() {
-  // Connect to the WiFi network
   WiFi.begin(WIFI_SSID, WIFI_PASS);
   Serial.print("Connecting.");
   while (WiFi.status() != WL_CONNECTED) {
@@ -231,13 +250,14 @@ void setupDHT() {
   dht.begin(); // Start the DHT sensor
 }
 
+//  Sets up the LED pins and attaches the servo motor to its pin.
 void setupLEDsAndServo() {
   pinMode(ledPin1Cold, OUTPUT);
   pinMode(ledPin2Good, OUTPUT);
   pinMode(ledPin3Heat, OUTPUT);
   myServo.attach(servoPin); // Attach servo to its pin
 }
-
+//  Reads the temperature and humidity values from the DHT sensor and sends them to Adafruit IO.
 void updateSensorData() {
   // Read values from DHT sensor
   float h = dht.readHumidity();
@@ -279,6 +299,7 @@ void updateSensorData() {
   }
 }
 
+//  Reads the LDR values from the two LDRs and controls the servo motor based on the difference between the values.
 void updateLDRAndServo() {
   int valueLdrPin1 = analogRead(ldrPin1) - OFFSET;
   int valueLdrPin2 = analogRead(ldrPin2);
