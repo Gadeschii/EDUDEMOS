@@ -7,68 +7,44 @@
 #include <ArduinoOTA.h>
 #include "config.h"
 
-// // WiFi credentials
-// #define WIFI_SSID "your_wifi_ssid"
-// #define WIFI_PASS "your_wifi_password"
+// Pin definitions and constants
+#define DHTPIN 32
+#define DHTTYPE DHT11
+#define ledPin1Cold 18
+#define ledPin2Good 19
+#define ledPin3Heat 21
+#define ldrPin1 34
+#define ldrPin2 35
+#define servoPin 25
+#define analogPin 39
+#define SENSOR_INTERVAL_5_MIN 300000
+#define SENSOR_INTERVAL_10_SEC 10000
+#define OFFSET 350
 
-// Adafruit IO credentials
-// #define AIO_USERNAME "your_aio_username"
-// #define AIO_KEY "your_aio_key"
+// Voltage divider resistances definitions
+const float R1 = 1000.0; // 1kΩ resistor
+const float R2 = 1000.0; // 1kΩ resistor
+
+// Global variables
+DHT dht(DHTPIN, DHTTYPE);
+Servo myServo;
+
+// Variables to store LDR sensor readings
+int ldrValue1 = 0;
+int ldrValue2 = 0;
+int averageLdrValue = 0;
+
+// Servo configuration variables
+int servoPos = 90;  // Initial servo position in the middle (90 degrees)
+int servoStep = 5;  // Servo movement increment/decrement
+int tolerance = 100; // Tolerance to avoid small movements
 
 AdafruitIO_WiFi io(AIO_USERNAME, AIO_KEY, WIFI_SSID, WIFI_PASS);
 AdafruitIO_Feed *temperature = io.feed("temperature");
 AdafruitIO_Feed *humidity = io.feed("humidity");
 AdafruitIO_Feed *ldrFeed = io.feed("ldr");
-AdafruitIO_Feed *microvoltsFeed = io.feed("microvolts"); // New feed for microvolts
-
-//DHT Sensor setup
-#define DHTPIN 32
-#define DHTTYPE DHT11
-DHT dht(DHTPIN, DHTTYPE);
-
-// LED pin definitions
-const int ledPin1Cold = 18;
-const int ledPin2Good = 19;
-const int ledPin3Heat = 21;
-
-// LDR and Servo setup
-const int ldrPin1 = 34;
-const int ldrPin2 = 35;
-const int servoPin = 33;
-const int OFFSET = 75;
-Servo myServo;
-
-// Analog pin and resistors setup
-const int analogPin = 39; 
-const float R1 = 1000.0; // 1kΩ resistor
-const float R2 = 1000.0; // 1kΩ resistor
-
-// Interval for sensor readings
-const unsigned long SENSOR_INTERVAL_5_MIN = 5 * 60 * 1000; // 5 minutes
-const unsigned long SENSOR_INTERVAL_10_SEC = 10 * 1000; // 10 seconds
-
-// Variable to store the last microvolts value
-float lastMicrovolts = -1;
-
-// Variables to store the last sensor read times
-unsigned long lastSensorReadTime5Min = 0;
-unsigned long lastSensorReadTime10Sec = 0;
-
-// Function declarations
-
-void setupWiFi();
-void setupOTA();
-void setupDHT();
-void setupLEDsAndServo();
-void handleOTA();
-void updateSensorData();
-void updateLDRAndServo();
-void readVoltage();
-void readSensorTask1(void * parameter);
-void readSensorTask2(void * parameter);
-void readVoltageTask(void * parameter);
-
-
+AdafruitIO_Feed *microvoltsFeed = io.feed("microvolts");
+float lastMicrovolts = 0;
 
 void setup() {
   Serial.begin(115200); // Start serial communication at 115200 baud rate
@@ -84,17 +60,17 @@ void setup() {
   xTaskCreatePinnedToCore(
     readSensorTask1,   // Task function
     "ReadSensorTask1", // Name of the task
-    10000,             // Stack size
+    4096,             // Stack size
     NULL,              // Task input parameter
     1,                 // Priority of the task
     NULL,              // Task handle
     0                  // Core where the task should run
   );
 
-  xTaskCreatePinnedToCore(
+  xTaskCreatePinnedToCore( 
     readSensorTask2,   // Task function
     "ReadSensorTask2", // Name of the task
-    10000,             // Stack size
+    4096,             // Stack size
     NULL,              // Task input parameter
     1,                 // Priority of the task
     NULL,              // Task handle
@@ -104,7 +80,7 @@ void setup() {
   xTaskCreatePinnedToCore(
     readVoltageTask,   // Task function
     "ReadVoltageTask", // Name of the task
-    10000,             // Stack size
+    4096,             // Stack size
     NULL,              // Task input parameter
     1,                 // Priority of the task
     NULL,              // Task handle
@@ -112,125 +88,53 @@ void setup() {
   );
 }
 
-//Handles OTA updates and maintains the connection to Adafruit IO.
-
 void loop() {
   handleOTA(); // Handle OTA updates
   io.run(); // Maintain connection to Adafruit IO
 }
 
-void readSensorTask1(void * parameter) {
-  for (;;) {
-    Serial.println("----------------------- Measured Temperature / Humidity -----------------------  ");
-    updateSensorData(); // Read and process sensor data 
-    vTaskDelay(SENSOR_INTERVAL_5_MIN / portTICK_PERIOD_MS); // Delay for 5 minutes
-  }
-}
-
-void readSensorTask2(void * parameter) {
-  for (;;) {
-    Serial.println("----------------------------- Measured LDR Motor -----------------------------  ");
-    updateLDRAndServo(); // Read LDR values and control servo
-    vTaskDelay(SENSOR_INTERVAL_5_MIN / portTICK_PERIOD_MS); // Delay for 5 minutes
-  }
-}
-
-void readVoltageTask(void * parameter) {
-  for (;;) {
-    Serial.println("----------------------------- Measured DC Motor (V) ----------------------------  ");
-    readVoltage(); // Read and process voltage
-    vTaskDelay(SENSOR_INTERVAL_10_SEC / portTICK_PERIOD_MS); // Delay for 10 Seg
-  }
-}
-void readVoltage() {
-  
-  // Take multiple readings to reduce noise
-  const int numReadings = 1000;
-  unsigned long sum = 0;
-
-  for (int i = 0; i < numReadings; i++) {
-    int reading = analogRead(analogPin);
-    sum += reading;
-  }
-
-  float averageReading = sum / (float)numReadings;
-  Serial.print("Average ADC reading: ");
-  Serial.println(averageReading);  // Display the average value
-
-  // Calculate voltage
-  float voltage = (averageReading / 4095.0) * 3.3;  // For 12-bit ADC (0-4095)
-  Serial.print("Measured voltage (V): ");
-  Serial.println(voltage);  // Display the measured voltage
-
-  
-  /* 
-   Adjust for voltage divider
-   The input voltage is calculated using the voltage divider formula.
-   R1 and R2 are the resistors used in the voltage divider.
-   The formula used is: inputVoltage = voltage / (R2 / (R1 + R2))
-*/
-  float inputVoltage = voltage / (R2 / (R1 + R2));
-
-  /* 
-   Convert to microvolts
-   The input voltage is converted to microvolts for higher precision.
-   1 volt = 1,000,000 microvolts
-*/
-  float microvolts = inputVoltage * 1000000.0;
-  Serial.print("Input voltage (µV): ");
-  Serial.println(microvolts);
-
- /* 
-   Apply a minimum threshold to filter noise
-   Any microvolts value below the threshold is set to 0 to filter out noise.
-*/
-  const float threshold = 10.0;  // Threshold in microvolts
-  if (microvolts < threshold) {
-    microvolts = 0;
-  }
-
-  /* 
-   Check if the microvolts value has changed
-   If the new microvolts value is different from the last value, it is printed and sent to Adafruit IO.
-*/
-  if (microvolts != lastMicrovolts) {
-    Serial.print("Measured voltage: ");
-    Serial.print(microvolts, 2);  // Display with 2 decimal places
-    Serial.println(" µV");
-
-    // Send microvolts to Adafruit IO
-    microvoltsFeed->save(microvolts);
-
-    // Update the last microvolts value
-    lastMicrovolts = microvolts;
-  }
-}
-
-//  Connects the ESP32 to a WiFi network and Adafruit IO.
 void setupWiFi() {
+  int retries = 0;
+  const int maxRetries = 5;
+
   WiFi.begin(WIFI_SSID, WIFI_PASS);
-  Serial.print("Connecting.");
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
+  Serial.print("Connecting to WiFi");
+
+  while (WiFi.status() != WL_CONNECTED && retries < maxRetries) {
+    delay(1000);
     Serial.print(".");
+    retries++;
   }
-  Serial.println("Connected to WiFi");
-  // Connect to Adafruit IO
+
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.println("\nConnected to WiFi");
+  } else {
+    Serial.println("\nWiFi connection failed. Restarting...");
+    ESP.restart();
+  }
+
+  connectToAdafruitIO();
+}
+
+void connectToAdafruitIO() {
   Serial.print("Connecting to Adafruit IO");
   io.connect();
-  // Wait for the connection to be established
-  while(io.status() < AIO_CONNECTED) {
+
+  int retries = 0;
+  const int maxRetries = 5;
+
+  while (io.status() < AIO_CONNECTED && retries < maxRetries) {
     Serial.print(".");
     delay(500);
+    retries++;
   }
-  Serial.println();
-  Serial.println(io.statusText());
 
-  if(io.status() == AIO_CONNECTED) {
-    Serial.println("Connected to Adafruit IO");
-  } else {
-    Serial.println("Failed to connect to Adafruit IO");
+  if (io.status() < AIO_CONNECTED) {
+    Serial.println("\nFailed to connect to Adafruit IO. Restarting...");
+    ESP.restart();
   }
+
+  Serial.println("\nConnected to Adafruit IO");
 }
 
 void setupOTA() {
@@ -258,14 +162,88 @@ void setupDHT() {
   dht.begin(); // Start the DHT sensor
 }
 
-//  Sets up the LED pins and attaches the servo motor to its pin.
 void setupLEDsAndServo() {
   pinMode(ledPin1Cold, OUTPUT);
   pinMode(ledPin2Good, OUTPUT);
   pinMode(ledPin3Heat, OUTPUT);
-  myServo.attach(servoPin); // Attach servo to its pin
+  // Attach the servo to the corresponding pin
+  myServo.attach(servoPin);
+
+  // Set the servo to the initial position (90 degrees, in the middle)
+  myServo.write(servoPos);
 }
-//  Reads the temperature and humidity values from the DHT sensor and sends them to Adafruit IO.
+
+void readSensorTask1(void * parameter) {
+  for (;;) {
+    Serial.println("----------------------- Measured Temperature / Humidity -----------------------  ");
+    updateSensorData(); // Read and process sensor data 
+    vTaskDelay(SENSOR_INTERVAL_5_MIN / portTICK_PERIOD_MS); // Delay for 5 minutes
+  }
+}
+
+void readSensorTask2(void * parameter) {
+  for (;;) {
+    Serial.println("----------------------------- Measured LDR and Servo -----------------------------  ");
+    updateLDRAndServo(); // Read LDR values and control servo
+    vTaskDelay(SENSOR_INTERVAL_10_SEC / portTICK_PERIOD_MS); // Delay for 10 seconds
+  }
+}
+
+void readVoltageTask(void * parameter) {
+  for (;;) {
+    Serial.println("----------------------------- Measured DC Motor (V) ----------------------------  ");
+    readVoltage(); // Read and process voltage
+    vTaskDelay(SENSOR_INTERVAL_10_SEC / portTICK_PERIOD_MS); // Delay for 10 seconds
+  }
+}
+
+void readVoltage() {
+  // Take multiple readings to reduce noise
+  const int numReadings = 1000;
+  unsigned long sum = 0;
+
+  for (int i = 0; i < numReadings; i++) {
+    int reading = analogRead(analogPin);
+    sum += reading;
+  }
+
+  float averageReading = sum / (float)numReadings;
+  Serial.print("Average ADC reading: ");
+  Serial.println(averageReading);  // Display the average value
+
+  // Calculate voltage
+  float voltage = (averageReading / 4095.0) * 3.3;  // For 12-bit ADC (0-4095)
+  Serial.print("Measured voltage (V): ");
+  Serial.println(voltage);  // Display the measured voltage
+
+  // Adjust for voltage divider
+  float inputVoltage = voltage / (R2 / (R1 + R2));
+
+  // Convert to microvolts
+  float microvolts = inputVoltage * 1000000.0;
+  Serial.print("Input voltage (µV): ");
+  Serial.println(microvolts);
+
+  // Apply a minimum threshold to filter noise
+  const float threshold = 10.0;  // Threshold in microvolts
+  if (microvolts < threshold) {
+    microvolts = 0;
+  }
+
+  // Check if the microvolts value has changed
+  if (microvolts != lastMicrovolts) {
+    Serial.print("Measured voltage: ");
+    Serial.print(microvolts, 2);  // Display with 2 decimal places
+    Serial.println(" µV");
+
+    // Send microvolts to Adafruit IO
+    microvoltsFeed->save(microvolts);
+
+    // Update the last microvolts value
+    lastMicrovolts = microvolts;
+  }
+}
+
 void updateSensorData() {
   // Read values from DHT sensor
   float h = dht.readHumidity();
@@ -307,37 +285,50 @@ void updateSensorData() {
   }
 }
 
-//  Reads the LDR values from the two LDRs and controls the servo motor based on the difference between the values.
 void updateLDRAndServo() {
-  int valueLdrPin1 = analogRead(ldrPin1) - OFFSET;
-  int valueLdrPin2 = analogRead(ldrPin2);
-  int difference = abs(valueLdrPin1 - valueLdrPin2);
-  int angle = map(difference, 0, 4095, 0, 180);
+  // Read LDR values
+  ldrValue1 = analogRead(ldrPin1);
+  ldrValue2 = analogRead(ldrPin2) - OFFSET;
 
-  // Move the servo to the calculated angle
-  myServo.write(angle);
-  int sum1 = 0, sum2 = 0; 
-  const int numReadings = 10; // Number of readings to calculate the average
+  // Invert readings so low values mean darkness and high values mean light
+  ldrValue1 = 4095 - ldrValue1;
+  ldrValue2 = 4095 - ldrValue2;
+  averageLdrValue = (ldrValue1 + ldrValue2) / 2;
 
-  for (int i = 0; i < numReadings; i++) {
-    sum1 += analogRead(ldrPin1); // Sum the values read from the LDR
-    sum2 += analogRead(ldrPin2); // Sum the values read from the LDR
-    delay(50); // Small pause between readings
-  }
-  long sum = (sum1 + sum2) / 2;
-  int average = sum / numReadings; // Calculate the average value
+  // Print readings for debugging
+  Serial.print("LDR 1: ");
+  Serial.print(ldrValue1);
+  Serial.print(" | LDR 2: ");
+  Serial.println(ldrValue2);
+  Serial.print("Average LDR: ");
+  Serial.println(averageLdrValue);
 
   // Send the average value to Adafruit IO
-  ldrFeed->save(average);
+  ldrFeed->save(averageLdrValue);
 
-  Serial.print("Average LDR value sent: ");
-  Serial.println(average);
+  // Compare LDR values and move the servo based on the difference
+  if (ldrValue1 > ldrValue2 + tolerance) {
+    if (servoPos > 0) {
+      servoPos -= servoStep;  // Move the servo to the left
+      Serial.println("Moving left");
+    }
+  } else if (ldrValue2 > ldrValue1 + tolerance) {
+    if (servoPos < 180) {
+      servoPos += servoStep;  // Move the servo to the right
+      Serial.println("Moving right");
+    }
+  }
 
-  // Print LDR values and servo angle
-  Serial.print("LDR1 Value: ");
-  Serial.println(valueLdrPin1);
-  Serial.print("LDR2 Value: ");
-  Serial.println(valueLdrPin2);
-  Serial.print("Servo Angle: ");
-  Serial.println(angle);
+  // Ensure the servo stays within the [0, 180] range
+  servoPos = constrain(servoPos, 0, 180);
+
+  // Move the servo to the new position only if it has changed
+  myServo.write(servoPos);
+
+  // Print the servo angle
+  Serial.print("Servo angle: ");
+  Serial.println(servoPos);
+
+  // Pause to give the servo time to move
+  delay(30);  // Increase the delay for more response time for the servo
 }
