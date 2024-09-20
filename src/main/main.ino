@@ -21,6 +21,14 @@
 #define SENSOR_INTERVAL_10_SEC 10000
 #define OFFSET 350
 
+// // WiFi credentials
+// #define WIFI_SSID "your_wifi_ssid"
+// #define WIFI_PASS "your_wifi_password"
+
+// Adafruit IO credentials
+// #define AIO_USERNAME "your_aio_username"
+// #define AIO_KEY "your_aio_key"
+
 // Voltage divider resistances definitions
 const float R1 = 1000.0; // 1kΩ resistor
 const float R2 = 1000.0; // 1kΩ resistor
@@ -37,7 +45,7 @@ int averageLdrValue = 0;
 // Servo configuration variables
 int servoPos = 90;  // Initial servo position in the middle (90 degrees)
 int servoStep = 5;  // Servo movement increment/decrement
-int tolerance = 100; // Tolerance to avoid small movements
+int tolerance = 200; // Tolerance to avoid small movements
 
 AdafruitIO_WiFi io(AIO_USERNAME, AIO_KEY, WIFI_SSID, WIFI_PASS);
 AdafruitIO_Feed *temperature = io.feed("temperature");
@@ -285,6 +293,7 @@ void updateSensorData() {
   }
 }
 
+//  Reads the LDR values from the two LDRs and controls the servo motor based on the difference between the values.
 void updateLDRAndServo() {
   // Read LDR values
   ldrValue1 = analogRead(ldrPin1);
