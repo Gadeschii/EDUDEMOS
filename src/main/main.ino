@@ -21,14 +21,6 @@
 #define SENSOR_INTERVAL_10_SEC 10000
 #define OFFSET 350
 
-// // WiFi credentials
-// #define WIFI_SSID "your_wifi_ssid"
-// #define WIFI_PASS "your_wifi_password"
-
-// Adafruit IO credentials
-// #define AIO_USERNAME "your_aio_username"
-// #define AIO_KEY "your_aio_key"
-
 // Voltage divider resistances definitions
 const float R1 = 1000.0; // 1kΩ resistor
 const float R2 = 1000.0; // 1kΩ resistor
@@ -52,6 +44,10 @@ AdafruitIO_Feed *temperature = io.feed("temperature");
 AdafruitIO_Feed *humidity = io.feed("humidity");
 AdafruitIO_Feed *ldrFeed = io.feed("ldr");
 AdafruitIO_Feed *microvoltsFeed = io.feed("microvolts");
+AdafruitIO_Feed *ledHighFeed =  io.feed("ledHighFeed");
+AdafruitIO_Feed *ledGoodFeed =  io.feed("ledGoodFeed");
+AdafruitIO_Feed *ledColdFeed =  io.feed("ledColdFeed");
+AdafruitIO_Feed *wifiFeed =  io.feed("wifiFeed");
 float lastMicrovolts = 0;
 
 void setup() {
@@ -116,6 +112,8 @@ void setupWiFi() {
 
   if (WiFi.status() == WL_CONNECTED) {
     Serial.println("\nConnected to WiFi");
+    // Send microvolts to Adafruit IO
+    wifiFeed->save(WIFI_SSID);
   } else {
     Serial.println("\nWiFi connection failed. Restarting...");
     ESP.restart();
@@ -278,22 +276,34 @@ void updateSensorData() {
   if (t < 20) {
     digitalWrite(ledPin1Cold, HIGH);
     digitalWrite(ledPin2Good, LOW);
-    digitalWrite(ledPin3Heat, LOW);
+    digitalWrite(ledPin3Heat, LOW); 
+     // Send to the corresponding feed (Cold LED)
+    ledColdFeed->save(1);  // 1 means the LED is ON
+    ledGoodFeed->save(0);  // OFF
+    ledHighFeed->save(0);  // OFF
     Serial.println("Cold is HIGH");
+    
   } else if (t >= 20 && t < 25) {
     digitalWrite(ledPin1Cold, LOW);
     digitalWrite(ledPin2Good, HIGH);
     digitalWrite(ledPin3Heat, LOW);
-    Serial.println("Good is HIGH");
+    // Send to the corresponding feed (Good LED)
+    ledColdFeed->save(0);  // OFF
+    ledGoodFeed->save(1);  // ON
+    ledHighFeed->save(0);  // OFF
+       Serial.println("Good is HIGH");
   } else {
     digitalWrite(ledPin1Cold, LOW);
     digitalWrite(ledPin2Good, LOW);
     digitalWrite(ledPin3Heat, HIGH);
+    // Send to the corresponding feed (Heat LED)
+    ledColdFeed->save(0);  // OFF
+    ledGoodFeed->save(0);  // OFF
+    ledHighFeed->save(1);  // ON
     Serial.println("Heat is HIGH");
   }
 }
 
-//  Reads the LDR values from the two LDRs and controls the servo motor based on the difference between the values.
 void updateLDRAndServo() {
   // Read LDR values
   ldrValue1 = analogRead(ldrPin1);
