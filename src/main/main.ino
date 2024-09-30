@@ -1,5 +1,6 @@
 
 #include <WiFi.h>
+#include <WiFiClient.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 #include "AdafruitIO_WiFi.h"
@@ -20,7 +21,10 @@
 #define analogPin 39
 #define SENSOR_INTERVAL_5_MIN 300000
 #define SENSOR_INTERVAL_10_SEC 10000
-#define OFFSET 350
+#define OFFSET 550
+
+WiFiServer telnetServer(23); 
+WiFiClient telnetClient;
 
 // Voltage divider resistances definitions
 const float R1 = 1000.0; // 1kΩ resistor
@@ -38,12 +42,14 @@ int averageLdrValue = 0;
 // Servo configuration variables
 int servoPos = 90;  // Initial servo position in the middle (90 degrees)
 int servoStep = 5;  // Servo movement increment/decrement
-int tolerance = 200; // Tolerance to avoid small movements
+int tolerance = 150; // Tolerance to avoid small movements
 
 AdafruitIO_WiFi io(AIO_USERNAME, AIO_KEY, WIFI_SSID, WIFI_PASS);
 AdafruitIO_Feed *temperature = io.feed("temperature");
 AdafruitIO_Feed *humidity = io.feed("humidity");
 AdafruitIO_Feed *ldrFeed = io.feed("ldr");
+AdafruitIO_Feed *ldr1Feed = io.feed("ldr1Feed");
+AdafruitIO_Feed *ldr2Feed = io.feed("ldr2Feed");
 AdafruitIO_Feed *microvoltsFeed = io.feed("microvolts");
 AdafruitIO_Feed *ledHighFeed =  io.feed("ledHighFeed");
 AdafruitIO_Feed *ledGoodFeed =  io.feed("ledGoodFeed");
@@ -145,6 +151,9 @@ void connectToAdafruitIO() {
 }
 
 void setupOTA() {
+  // Start telnet server
+  telnetServer.begin();
+  telnetServer.setNoDelay(true);
   // Initialize ArduinoOTA for over-the-air updates
   ArduinoOTA.setHostname("ESP32-OTA");
   ArduinoOTA.setPassword("admin"); // Uncomment to set a password for OTA updates
@@ -184,8 +193,30 @@ void setupOTA() {
 
 void handleOTA() {
   ArduinoOTA.handle(); // Handle OTA updates
-}
 
+  //check if there are new client
+  // Verificar si hay un nuevo cliente telnet
+  if (telnetServer.hasClient()) {
+    if (!telnetClient || !telnetClient.connected()) {
+      if (telnetClient) telnetClient.stop();
+      telnetClient = telnetServer.available();
+      Serial.println("New Telnet client connected");
+    } else {
+      telnetServer.available().stop();
+    }
+  }
+
+  //Send data to the telnet client server
+  if (telnetClient && telnetClient.connected()) {
+    while (Serial.available()) {
+      telnetClient.write(Serial.read());
+    }
+    while (telnetClient.available()) {
+      Serial.write(telnetClient.read());
+    }
+  }
+
+}
 void setupDHT() {
   dht.begin(); // Start the DHT sensor
 }
@@ -328,8 +359,8 @@ void updateSensorData() {
 
 void updateLDRAndServo() {
   // Read LDR values
-  ldrValue1 = analogRead(ldrPin1);
-  ldrValue2 = analogRead(ldrPin2) - OFFSET;
+  ldrValue1 = analogRead(ldrPin1) ;
+  ldrValue2 = analogRead(ldrPin2)- OFFSET;
 
   // Invert readings so low values mean darkness and high values mean light
   ldrValue1 = 4095 - ldrValue1;
@@ -346,6 +377,8 @@ void updateLDRAndServo() {
 
   // Send the average value to Adafruit IO
   ldrFeed->save(averageLdrValue);
+  ldr1Feed-> save (ldrValue1);
+  ldr2Feed -> save (ldrValue2);
 
   // Compare LDR values and move the servo based on the difference
   if (ldrValue1 > ldrValue2 + tolerance) {
