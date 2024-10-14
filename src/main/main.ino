@@ -18,7 +18,8 @@
 #define ldrPin1 34
 #define ldrPin2 35
 #define servoPin 25
-#define analogPin 39
+#define DcMotorPin 39
+#define SolarPin 36
 #define SENSOR_INTERVAL_5_MIN 300000
 #define SENSOR_INTERVAL_10_SEC 10000
 #define OFFSET 550
@@ -27,12 +28,12 @@ WiFiServer telnetServer(23);
 WiFiClient telnetClient;
 
 // Set up your wifi Credencial
-#define WIFI_SSID "wifi_name"
-#define WIFI_PASS "Wifi_Password"
+//#define WIFI_SSID "wifi_name"
+//#define WIFI_PASS "Wifi_Password"
 
 // Set up your API key for Adafruit IO
-#define AIO_USERNAME "Adafuit_name"
-#define AIO_KEY "Adafruit_Password"
+//#define AIO_USERNAME "Adafuit_name"
+//#define AIO_KEY "Adafruit_Password"
 
 // Voltage divider resistances definitions
 const float R1 = 1000.0; // 1kΩ resistor
@@ -58,7 +59,8 @@ AdafruitIO_Feed *humidity = io.feed("humidity");
 AdafruitIO_Feed *ldrFeed = io.feed("ldr");
 AdafruitIO_Feed *ldr1Feed = io.feed("ldr1Feed");
 AdafruitIO_Feed *ldr2Feed = io.feed("ldr2Feed");
-AdafruitIO_Feed *microvoltsFeed = io.feed("microvolts");
+AdafruitIO_Feed *microvoltsMotorDcFeed = io.feed("microvoltsMotorDc");
+AdafruitIO_Feed *microvoltsSolarFeed = io.feed("microvoltsSolar");
 AdafruitIO_Feed *ledHighFeed =  io.feed("ledHighFeed");
 AdafruitIO_Feed *ledGoodFeed =  io.feed("ledGoodFeed");
 AdafruitIO_Feed *ledColdFeed =  io.feed("ledColdFeed");
@@ -69,6 +71,7 @@ void setup() {
   Serial.begin(115200); // Start serial communication at 115200 baud rate
   analogReadResolution(12); // ESP32 has a 12-bit ADC
   analogSetAttenuation(ADC_11db); // Set attenuation for higher sensitivity
+  pinMode(4, INPUT);
 
   setupWiFi(); // Setup WiFi connection
   setupOTA(); // Setup OTA for remote updates
@@ -97,8 +100,18 @@ void setup() {
   );
 
   xTaskCreatePinnedToCore(
-    readVoltageTask,   // Task function
-    "ReadVoltageTask", // Name of the task
+    readDcMotorVoltageTask,   // Task function
+    "readDcMotorVoltageTask", // Name of the task
+    4096,             // Stack size
+    NULL,              // Task input parameter
+    1,                 // Priority of the task
+    NULL,              // Task handle
+    1                  // Core where the task should run
+  );
+
+  xTaskCreatePinnedToCore(
+    readSolarVoltageTask,   // Task function
+    "readSolarVoltageTask", // Name of the task
     4096,             // Stack size
     NULL,              // Task input parameter
     1,                 // Priority of the task
@@ -252,25 +265,35 @@ void readSensorTask2(void * parameter) {
   for (;;) {
     Serial.println("----------------------------- Measured LDR and Servo -----------------------------  ");
     updateLDRAndServo(); // Read LDR values and control servo
+    vTaskDelay(SENSOR_INTERVAL_5_MIN / portTICK_PERIOD_MS); // Delay for 10 seconds
+  }
+}
+
+void readSolarVoltageTask(void * parameter) {
+  for (;;) {
+    Serial.println("----------------------------- Measured Solar (V) ----------------------------  ");
+    readSolarVoltage(); // Read and process voltage
     vTaskDelay(SENSOR_INTERVAL_10_SEC / portTICK_PERIOD_MS); // Delay for 10 seconds
   }
 }
 
-void readVoltageTask(void * parameter) {
+void readDcMotorVoltageTask(void * parameter) {
   for (;;) {
     Serial.println("----------------------------- Measured DC Motor (V) ----------------------------  ");
-    readVoltage(); // Read and process voltage
-    vTaskDelay(SENSOR_INTERVAL_10_SEC / portTICK_PERIOD_MS); // Delay for 10 seconds
+    readDcMotorVoltage(); // Read and process voltage
+    vTaskDelay(SENSOR_INTERVAL_5_MIN / portTICK_PERIOD_MS); // Delay for 10 seconds
   }
 }
 
-void readVoltage() {
+
+
+void readDcMotorVoltage() {
   // Take multiple readings to reduce noise
   const int numReadings = 1000;
   unsigned long sum = 0;
 
   for (int i = 0; i < numReadings; i++) {
-    int reading = analogRead(analogPin);
+    int reading = analogRead(DcMotorPin);
     sum += reading;
   }
 
@@ -287,29 +310,78 @@ void readVoltage() {
   float inputVoltage = voltage / (R2 / (R1 + R2));
 
   // Convert to microvolts
-  float microvolts = inputVoltage * 1000000.0;
+  float microvoltsMotorDc = inputVoltage * 1000000.0;
   Serial.print("Input voltage (µV): ");
-  Serial.println(microvolts);
+  Serial.println(microvoltsMotorDc);
 
   // Apply a minimum threshold to filter noise
   const float threshold = 10.0;  // Threshold in microvolts
-  if (microvolts < threshold) {
-    microvolts = 0;
+  if (microvoltsMotorDc < threshold) {
+    microvoltsMotorDc = 0;
   }
 
   // Check if the microvolts value has changed
-  if (microvolts != lastMicrovolts) {
+  if (microvoltsMotorDc != lastMicrovolts) {
     Serial.print("Measured voltage: ");
-    Serial.print(microvolts, 2);  // Display with 2 decimal places
+    Serial.print(microvoltsMotorDc, 2);  // Display with 2 decimal places
     Serial.println(" µV");
 
     // Send microvolts to Adafruit IO
-    microvoltsFeed->save(microvolts);
+    microvoltsMotorDcFeed->save(microvoltsMotorDc);
 
     // Update the last microvolts value
-    lastMicrovolts = microvolts;
+    lastMicrovolts = microvoltsMotorDc;
   }
 }
+
+void readSolarVoltage() {
+  // Take multiple readings to reduce noise
+  const int numReadings = 1000;
+  unsigned long sum = 0;
+
+  for (int i = 0; i < numReadings; i++) {
+    int reading = analogRead(SolarPin);
+    sum += reading;
+  }
+
+  float averageReading = sum / (float)numReadings;
+  Serial.print("Average ADC reading: ");
+  Serial.println(averageReading);  // Display the average value
+
+  // Calculate voltage
+  float voltage = (averageReading / 4095.0) * 3.3;  // For 12-bit ADC (0-4095)
+  Serial.print("Measured voltage (V): ");
+  Serial.println(voltage);  // Display the measured voltage
+
+  // Adjust for voltage divider
+  float inputVoltage = voltage / (R2 / (R1 + R2));
+
+  // Convert to microvolts
+  float microvoltsSolar = inputVoltage * 1000000.0;
+  Serial.print("Input voltage (µV): ");
+  Serial.println(microvoltsSolar);
+
+  // Apply a minimum threshold to filter noise
+  const float threshold = 10.0;  // Threshold in microvolts
+  if (microvoltsSolar < threshold) {
+    microvoltsSolar = 0;
+  }
+
+  // Check if the microvolts value has changed
+  if (microvoltsSolar != lastMicrovolts) {
+    Serial.print("Measured voltage: ");
+    Serial.print(microvoltsSolar, 2);  // Display with 2 decimal places
+    Serial.println(" µV");
+
+    // Send microvolts to Adafruit IO
+    microvoltsSolarFeed->save(microvoltsSolar);
+
+    // Update the last microvolts value
+    lastMicrovolts = microvoltsSolar;
+  }
+}
+
+
 
 void updateSensorData() {
   // Read values from DHT sensor
