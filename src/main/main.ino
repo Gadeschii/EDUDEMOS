@@ -26,6 +26,14 @@
 WiFiServer telnetServer(23); 
 WiFiClient telnetClient;
 
+// Set up your wifi Credencial
+#define WIFI_SSID "wifi_name"
+#define WIFI_PASS "Wifi_Password"
+
+// Set up your API key for Adafruit IO
+#define AIO_USERNAME "Adafuit_name"
+#define AIO_KEY "Adafruit_Password"
+
 // Voltage divider resistances definitions
 const float R1 = 1000.0; // 1kΩ resistor
 const float R2 = 1000.0; // 1kΩ resistor
