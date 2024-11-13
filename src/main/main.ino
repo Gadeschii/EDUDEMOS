@@ -23,17 +23,10 @@
 #define SENSOR_INTERVAL_5_MIN 300000
 #define SENSOR_INTERVAL_10_SEC 10000
 #define OFFSET 550
+#define OFFSETLDR 300 //Difference between LDR1 and LDR2, (each case are different), look for yor personal value
 
 WiFiServer telnetServer(23); 
 WiFiClient telnetClient;
-
-// Set up your wifi Credencial
-//#define WIFI_SSID "wifi_name"
-//#define WIFI_PASS "Wifi_Password"
-
-// Set up your API key for Adafruit IO
-//#define AIO_USERNAME "Adafuit_name"
-//#define AIO_KEY "Adafruit_Password"
 
 // Voltage divider resistances definitions
 const float R1 = 1000.0; // 1kΩ resistor
@@ -49,8 +42,8 @@ int ldrValue2 = 0;
 int averageLdrValue = 0;
 
 // Servo configuration variables
-int servoPos = 90;  // Initial servo position in the middle (90 degrees)
-int servoStep = 5;  // Servo movement increment/decrement
+int servoPos = 100;  // Initial servo position in the middle (90 degrees)
+int servoStep = 10;  // Servo movement increment/decrement
 int tolerance = 150; // Tolerance to avoid small movements
 
 AdafruitIO_WiFi io(AIO_USERNAME, AIO_KEY, WIFI_SSID, WIFI_PASS);
@@ -73,8 +66,8 @@ void setup() {
   analogSetAttenuation(ADC_11db); // Set attenuation for higher sensitivity
   pinMode(4, INPUT);
 
-  setupWiFi(); // Setup WiFi connection
-  setupOTA(); // Setup OTA for remote updates
+  //setupWiFi(); // Setup WiFi connection
+  //setupOTA(); // Setup OTA for remote updates
   setupDHT(); // Setup DHT sensor
   setupLEDsAndServo(); // Setup LED pins and servo
 
@@ -121,8 +114,8 @@ void setup() {
 }
 
 void loop() {
-  handleOTA(); // Handle OTA updates
-  io.run(); // Maintain connection to Adafruit IO
+  //handleOTA(); // Handle OTA updates
+  //io.run(); // Maintain connection to Adafruit IO
 }
 
 void setupWiFi() {
@@ -257,7 +250,7 @@ void readSensorTask1(void * parameter) {
   for (;;) {
     Serial.println("----------------------- Measured Temperature / Humidity -----------------------  ");
     updateSensorData(); // Read and process sensor data 
-    vTaskDelay(SENSOR_INTERVAL_5_MIN / portTICK_PERIOD_MS); // Delay for 5 minutes
+    vTaskDelay(SENSOR_INTERVAL_10_SEC / portTICK_PERIOD_MS); // Delay for 5 minutes
   }
 }
 
@@ -265,7 +258,7 @@ void readSensorTask2(void * parameter) {
   for (;;) {
     Serial.println("----------------------------- Measured LDR and Servo -----------------------------  ");
     updateLDRAndServo(); // Read LDR values and control servo
-    vTaskDelay(SENSOR_INTERVAL_5_MIN / portTICK_PERIOD_MS); // Delay for 10 seconds
+    vTaskDelay(SENSOR_INTERVAL_10_SEC / portTICK_PERIOD_MS); // Delay for 10 seconds
   }
 }
 
@@ -284,7 +277,6 @@ void readDcMotorVoltageTask(void * parameter) {
     vTaskDelay(SENSOR_INTERVAL_5_MIN / portTICK_PERIOD_MS); // Delay for 10 seconds
   }
 }
-
 
 
 void readDcMotorVoltage() {
@@ -335,29 +327,19 @@ void readDcMotorVoltage() {
 }
 
 void readSolarVoltage() {
-  // Take multiple readings to reduce noise
-  const int numReadings = 1000;
-  unsigned long sum = 0;
+ int solarVoltagedV = analogRead ( SolarPin); //dV
+ int solarVoltage = solarVoltagedV * 10;
 
-  for (int i = 0; i < numReadings; i++) {
-    int reading = analogRead(SolarPin);
-    sum += reading;
-  }
-
-  float averageReading = sum / (float)numReadings;
-  Serial.print("Average ADC reading: ");
-  Serial.println(averageReading);  // Display the average value
+  Serial.print("Voltage of Solar Panel: ");
+  Serial.println(solarVoltage);  
 
   // Calculate voltage
-  float voltage = (averageReading / 4095.0) * 3.3;  // For 12-bit ADC (0-4095)
+  float voltage = (solarVoltage / 4095.0) * 3.3;  // For 12-bit ADC (0-4095)
   Serial.print("Measured voltage (V): ");
   Serial.println(voltage);  // Display the measured voltage
 
-  // Adjust for voltage divider
-  float inputVoltage = voltage / (R2 / (R1 + R2));
-
   // Convert to microvolts
-  float microvoltsSolar = inputVoltage * 1000000.0;
+  float microvoltsSolar = voltage * 1000000.0;
   Serial.print("Input voltage (µV): ");
   Serial.println(microvoltsSolar);
 
@@ -369,7 +351,7 @@ void readSolarVoltage() {
 
   // Check if the microvolts value has changed
   if (microvoltsSolar != lastMicrovolts) {
-    Serial.print("Measured voltage: ");
+    Serial.print("Send voltage: ");
     Serial.print(microvoltsSolar, 2);  // Display with 2 decimal places
     Serial.println(" µV");
 
@@ -380,8 +362,6 @@ void readSolarVoltage() {
     lastMicrovolts = microvoltsSolar;
   }
 }
-
-
 
 void updateSensorData() {
   // Read values from DHT sensor
@@ -440,11 +420,10 @@ void updateSensorData() {
 void updateLDRAndServo() {
   // Read LDR values
   ldrValue1 = analogRead(ldrPin1) ;
-  ldrValue2 = analogRead(ldrPin2)- OFFSET;
+  ldrValue2 = analogRead(ldrPin2) + OFFSETLDR;
 
   // Invert readings so low values mean darkness and high values mean light
-  ldrValue1 = 4095 - ldrValue1;
-  ldrValue2 = 4095 - ldrValue2;
+ 
   averageLdrValue = (ldrValue1 + ldrValue2) / 2;
 
   // Print readings for debugging
